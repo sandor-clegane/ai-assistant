@@ -1,0 +1,7 @@
+model_service/final_model/*
+model_service/final_tokenizer/*
+
+
+*/.env/*
+env/
+__pycache__

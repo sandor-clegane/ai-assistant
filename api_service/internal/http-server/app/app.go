@@ -3,6 +3,7 @@ package app
 import (
 	"ai-assistant-api/internal/config"
 	h "ai-assistant-api/internal/http-server/handlers"
+	mwr "ai-assistant-api/internal/http-server/middleware"
 	bg "ai-assistant-api/internal/service/background"
 	kafka "ai-assistant-api/internal/service/kafka/producer"
 	"ai-assistant-api/internal/service/task"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 type Server struct {
@@ -49,9 +51,12 @@ func New(cfg *config.Config, log *slog.Logger) (*Server, error) {
 	router.Use(middleware.Logger)
 	router.Use(middleware.Recoverer)
 	router.Use(middleware.URLFormat)
+	router.Use(mwr.HTTPMetrics)
 
 	router.Post("/task", h.HandleCreateTask(log, taskService))
 	router.Get("/task/{id}", h.HandleGetTask(log, taskService))
+
+	router.Handle("/metrics", promhttp.Handler())
 
 	return &Server{
 		server: &http.Server{

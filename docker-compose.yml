@@ -1,37 +1,71 @@
-# Copyright Broadcom, Inc. All Rights Reserved.
-# SPDX-License-Identifier: APACHE-2.0
-
-version: "2"
-
+version: '3.7'
 services:
-  db:
-    image: postgres:latest
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    environment:
-      - "POSTGRES_DB=assistant-api"
-      - "POSTGRES_PASSWORD=postgres"
-      - "POSTGRES_USER=postgres"
+  zookeeper:
+    restart: always
+    image: docker.io/bitnami/zookeeper:3.8
     ports:
-      - "6666:5432"
+      - "2181:2181"
+    volumes:
+      - "zookeeper-volume:/bitnami"
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
   kafka:
-    image: docker.io/bitnami/kafka:3.7
+    restart: always
+    image: &kafka-image docker.io/bitnami/kafka:3.3
     ports:
-      - "9092:9092"
+      - "9093:9093"
+    healthcheck:
+      test: ["CMD", "kafka-topics.sh", "--bootstrap-server=localhost:9092", "--list"]
+      start_period: 15s
+      interval: 10s
     volumes:
-      - "kafka_data:/bitnami"
+      - "kafka-volume:/bitnami"
     environment:
-      # KRaft settings
-      - KAFKA_CFG_NODE_ID=0
-      - KAFKA_CFG_PROCESS_ROLES=controller,broker
-      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
-      # Listeners
-      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
-      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092
-      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
-      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
-      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+      - KAFKA_BROKER_ID=1
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CLIENT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      - KAFKA_CFG_LISTENERS=CLIENT://:9092,EXTERNAL://:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=CLIENT://kafka:9092,EXTERNAL://localhost:9093
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=CLIENT
+    depends_on:
+      - zookeeper
+  init-kafka:
+    image: *kafka-image
+    working_dir: /opt/bitnami/kafka/bin
+    entrypoint: /bin/bash
+    depends_on:
+      kafka:
+        condition: service_healthy
+    command: |
+      kafka-topics.sh --create --if-not-exists --topic ai_assistant_responses --replication-factor=1 --partitions=1 --bootstrap-server kafka:9092
+      kafka-topics.sh --create --if-not-exists --topic ai_assistant_tasks --replication-factor=1 --partitions=1 --bootstrap-server kafka:9092
+  prometheus:
+    image: prom/prometheus:v2.42.0
+    ports:
+      - 9090:9090
+    volumes:
+      - ./configs/prometheus.yml:/etc/prometheus/prometheus.yml
+  grafana:
+    image: grafana/grafana:9.3.6
+    ports:
+      - 3000:3000
+  api_service:
+    build:
+      context: ./api_service
+      dockerfile: Dockerfile
+    depends_on:
+      - init-kafka
+    ports:
+      - 8082:8082
+    restart: on-failure
+  model_service:
+    build:
+      context: ./model_service
+      dockerfile: Dockerfile
+    depends_on:
+      - init-kafka
+    restart: on-failure
 volumes:
-  kafka_data:
-    driver: local
-  pgdata:
+  kafka-volume:
+  zookeeper-volume:

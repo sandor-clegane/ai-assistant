@@ -1,10 +1,13 @@
 package task
 
 import (
+	"ai-assistant-api/internal/metrics"
 	"ai-assistant-api/internal/model"
 	"ai-assistant-api/internal/service"
 	"ai-assistant-api/internal/storage"
 	"ai-assistant-api/internal/utils/logger/sl"
+	"time"
+
 	"context"
 	"errors"
 	"log/slog"
@@ -53,6 +56,9 @@ func (s *Service) CreateTask(ctx context.Context, instruction, code string) (uui
 		log.Error("failed to save pull reqest", sl.Err(err))
 		return uuid.UUID{}, err
 	}
+
+	metrics.TaskCountCurrent.WithLabelValues().Inc()
+	metrics.TaskCountTotal.WithLabelValues().Inc()
 
 	return createdTask.ID, nil
 }
@@ -125,11 +131,15 @@ func (s *Service) FinishTask(ctx context.Context, taskID uuid.UUID, response str
 		Response: response,
 	}
 
-	_, err := s.taskStorage.SaveTask(ctx, task)
+	finishedTask, err := s.taskStorage.SaveTask(ctx, task)
 	if err != nil {
 		log.Error("failed to save updated task", sl.Err(err))
 		return err
 	}
+
+	processingTime := time.Since(*finishedTask.CreatedAt).Seconds()
+	metrics.TaskCountCurrent.WithLabelValues().Dec()
+	metrics.TaskProcessingDurationHistorgram.WithLabelValues().Observe(processingTime)
 
 	return nil
 }

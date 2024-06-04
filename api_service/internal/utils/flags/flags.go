@@ -14,7 +14,7 @@ type CMDFlags struct {
 }
 
 func ParseFlags() (*CMDFlags, error) {
-	configPath := flag.String(configPathFlag, "", "Configuration file path")
+	configPath := flag.String(configPathFlag, "config/local.yaml", "Configuration file path")
 
 	flag.Parse()
 
