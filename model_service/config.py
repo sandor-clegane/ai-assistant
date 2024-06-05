@@ -12,8 +12,11 @@ KAFKA_TOPIC_TASKS = os.getenv("KAFKA_TOPIC_TASKS")
 KAFKA_TOPIC_RESPONSES = os.getenv("KAFKA_TOPIC_RESPONSES")
 KAFKA_CONSUMER_GROUP = os.getenv("KAFKA_CONSUMER_GROUP")
 #   model
+# gpt2
 FINAL_MODEL = os.getenv("FINAL_MODEL")
 FINAL_TOKENIZER = os.getenv("FINAL_TOKENIZER")
+# granite
+GRANITE = os.getenv("GRANITE")
 DEVICE = os.getenv("DEVICE")
 
 # Create event loop

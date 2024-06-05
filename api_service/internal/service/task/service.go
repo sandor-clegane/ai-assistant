@@ -6,8 +6,9 @@ import (
 	"ai-assistant-api/internal/service"
 	"ai-assistant-api/internal/storage"
 	"ai-assistant-api/internal/utils/logger/sl"
-	"time"
 
+	"time"
+	"fmt"
 	"context"
 	"errors"
 	"log/slog"
@@ -25,17 +26,23 @@ type KafkaService interface {
 	SendTask(ctx context.Context, task model.Task) error
 }
 
+type NotificationService interface {
+	Notify(message string) error
+}
+
 type Service struct {
 	log          *slog.Logger
 	taskStorage  TaskStorage
 	kafkaService KafkaService
+	notificationService NotificationService
 }
 
-func New(log *slog.Logger, storage TaskStorage, kafkaService KafkaService) *Service {
+func New(log *slog.Logger, storage TaskStorage, kafkaService KafkaService, notifService NotificationService) *Service {
 	return &Service{
 		log:          log,
 		taskStorage:  storage,
 		kafkaService: kafkaService,
+		notificationService: notifService,
 	}
 }
 
@@ -137,9 +144,19 @@ func (s *Service) FinishTask(ctx context.Context, taskID uuid.UUID, response str
 		return err
 	}
 
+	err = s.notificationService.Notify(buildNotificationMessage(task))
+	if err != nil {
+		log.Error("failed to send notification", sl.Err(err))
+		return err
+	}
+
 	processingTime := time.Since(*finishedTask.CreatedAt).Seconds()
 	metrics.TaskCountCurrent.WithLabelValues().Dec()
 	metrics.TaskProcessingDurationHistorgram.WithLabelValues().Observe(processingTime)
 
 	return nil
+}
+
+func buildNotificationMessage(task model.Task) string {
+	return fmt.Sprintf("TaskID: %s\n\n%s", task.ID.String(), task.Response)
 }

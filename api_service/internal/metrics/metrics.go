@@ -20,6 +20,13 @@ var (
 		[]string{},
 	)
 
+	HttpRequestsInflightMax = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "http_requests_inflight_max",
+		},
+		[]string{},
+	)
+
 	HttpRequestsDurationHistorgram = promauto.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name: "http_request_duration_seconds_historgram",

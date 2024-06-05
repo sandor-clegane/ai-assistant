@@ -10,3 +10,4 @@ async def home():
 
 app.include_router(router.route)
 asyncio.create_task(router.process_tasks())
+asyncio.create_task(router.process_queue())

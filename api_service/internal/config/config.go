@@ -9,6 +9,8 @@ import (
 )
 
 type Config struct {
+	TelegramSecret string `yaml:"tg_secret" env-required:"true"`
+	HttpRequestsMax int `yaml:"http_requests_max" env-default:"20"`
 	Env          string `yaml:"env" env-default:"local"`
 	StoragePath  string `yaml:"storage_path" env-required:"true"`
 	GithubSecret string `yaml:"github_secret" env-required:"true"`

@@ -1,6 +1,8 @@
 env: "local"
 storage_path: "./storage.db"
-github_secret: ""
+github_secret: "pidor"
+tg_secret: "7194043216:AAE91RDTVrVVzUBm23_Jh49AUbNU9YOj2n8"
+http_requests_max: 20
 http_server:
   address: ":8082"
   timeout: 4s

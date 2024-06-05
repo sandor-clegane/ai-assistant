@@ -1,9 +1,11 @@
 package app
 
 import (
+	"ai-assistant-api/internal/metrics"
 	"ai-assistant-api/internal/config"
 	h "ai-assistant-api/internal/http-server/handlers"
 	mwr "ai-assistant-api/internal/http-server/middleware"
+	notification "ai-assistant-api/internal/service/notification"
 	bg "ai-assistant-api/internal/service/background"
 	kafka "ai-assistant-api/internal/service/kafka/producer"
 	"ai-assistant-api/internal/service/task"
@@ -40,7 +42,9 @@ func New(cfg *config.Config, log *slog.Logger) (*Server, error) {
 		return nil, err
 	}
 
-	taskService := task.New(log, storage, kafkaService)
+	notificationService := notification.New(cfg, log)
+
+	taskService := task.New(log, storage, kafkaService, notificationService)
 
 	bgService := bg.New(cfg, log, taskService)
 
@@ -57,6 +61,8 @@ func New(cfg *config.Config, log *slog.Logger) (*Server, error) {
 	router.Get("/task/{id}", h.HandleGetTask(log, taskService))
 
 	router.Handle("/metrics", promhttp.Handler())
+
+	metrics.HttpRequestsInflightMax.WithLabelValues().Set(float64(cfg.HttpRequestsMax))
 
 	return &Server{
 		server: &http.Server{

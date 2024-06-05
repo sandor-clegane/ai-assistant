@@ -1,5 +1,6 @@
 model_service/final_model/*
 model_service/final_tokenizer/*
+model_service/final_granite/*
 
 
 */.env/*
